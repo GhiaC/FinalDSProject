@@ -66,7 +66,7 @@ func runAlgorithm() {
 		setFalseToNodes()
 		i, j = removeFirstEdge()
 		//ch := make(chan int, 1)
-		dfs(i, j, 0, 1)
+		bfs(i, j, 0, 1)
 		//dfs(i, j, 0, 2)
 		//<- ch
 		//close(ch)
@@ -74,7 +74,7 @@ func runAlgorithm() {
 	contin = false
 	setFalseToNodes()
 	fmt.Println("removed edgs : ", len1-len(EDGES))
-	dfsPrint(i)
+	bfsPrint(i)
 }
 
 //before every dfs
@@ -138,21 +138,21 @@ func showCounter() {
 }
 
 //execute end of runAlgorithm and show Result
-func dfsPrint(i int) {
+func bfsPrint(i int) {
 	n := NODES[i]
 	n.visited = 1
 	iterateEdge := n.nextEdge
 	for iterateEdge != nil {
 		if NODES[iterateEdge.num].visited == 0 {
 			fmt.Println(iterateEdge.num)
-			dfsPrint(iterateEdge.num)
+			bfsPrint(iterateEdge.num)
 		}
 		iterateEdge = iterateEdge.nextEdge
 	}
 }
 
 //remove edge from nodes
-func dfs(i, j, depth, direction int) {
+func bfs(i, j, depth, direction int) {
 	n := NODES[i]
 	if !contin && n.visited == 0 {
 		n.visited = direction
@@ -168,7 +168,7 @@ func dfs(i, j, depth, direction int) {
 				//	go dfs(iterateEdge.num, j, depth+1, direction, ch)
 				//	counterThread++
 				//} else {
-					dfs(iterateEdge.num, j, depth+1, direction)
+					bfs(iterateEdge.num, j, depth+1, direction)
 				//}
 				//} else if NODES[iterateEdge.num].visited != 0 && NODES[iterateEdge.num].visited != direction {
 				//	contin = true
