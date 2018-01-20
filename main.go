@@ -10,6 +10,7 @@ import (
 	"sort"
 	"time"
 	"DS2/MySort"
+	"runtime"
 )
 
 type Node struct {
@@ -18,7 +19,6 @@ type Node struct {
 	lastEdge   *EdgeLinkedList
 	edgesCount int
 	visited    int
-	//next       *node
 }
 
 type EdgeLinkedList struct {
@@ -38,7 +38,7 @@ var contin bool //continue
 var end bool
 var counter = 0
 
-const file = "test1.txt"
+const file = "test8.txt"
 
 func main() {
 	contin = true
@@ -46,38 +46,40 @@ func main() {
 	initNode()
 	sortNodes()
 	pointEdges()
-	runAlgorithm()
+	runAlgorithm("")
 	fmt.Println("end")
 }
 
-var counterThread = 0
-
-func runAlgorithm() {
+func runAlgorithm(mode string) {
 	end = true
 	len1 := len(EDGES)
-	fmt.Println(len1)
+	fmt.Println("Number of Edges : ", len1)
 	var i, j = 0, 0
 	go showCounter()
 	MySort.Sort(byPoint(EDGES))
 	for contin {
 		counter++
-		counterThread = 0
 		contin = false
-		setFalseToNodes()
-		repoint()
-		MySort.Sort(byPoint(EDGES))
-		//MySort.BubbleSort(byPoint(EDGES), 0, len(EDGES)-1)
-		//MySort.InsertionSort(byPoint(EDGES), 0, len(EDGES)-1)
-		//MySort.QuickSort(byPoint(EDGES), 0, len(EDGES)-1)
-		//MySort.Optimum(byPoint(EDGES), 0, len(EDGES)-1, 25, 0)
 		i, j = removeFirstEdge()
-		bfs(i, j, 0, 1)
+		repoint(i, j)
+		switch mode {
+		case "bubble":
+			MySort.BubbleSort(byPoint(EDGES), 0, len(EDGES)-1)
+		case "insertion":
+			MySort.InsertionSort(byPoint(EDGES), 0, len(EDGES)-1)
+		case "quicksort":
+			MySort.QuickSort(byPoint(EDGES), 0, len(EDGES)-1)
+		case "optimum":
+			MySort.Optimum(byPoint(EDGES), 0, len(EDGES)-1, 25, 0)
+		default:
+			MySort.Sort(byPoint(EDGES))
+		}
+		setFalseToNodes()
+		dfs(i, j, 0, 1)
 	}
 	contin = false
 	setFalseToNodes()
-
-	fmt.Println("removed edgs : ", len1-len(EDGES))
-
+	fmt.Println("Removed Edges : ", len1-len(EDGES))
 	f, err := os.Create("result" + file)
 	check(err)
 	defer f.Close()
@@ -88,7 +90,7 @@ func runAlgorithm() {
 }
 
 //remove edge from nodes
-func bfs(i, j, depth, direction int) {
+func dfs(i, j, depth, direction int) {
 	n := NODES[i]
 	if !contin && n.visited == 0 {
 		n.visited = direction
@@ -99,27 +101,14 @@ func bfs(i, j, depth, direction int) {
 		iterateEdge := n.nextEdge
 		for iterateEdge != nil && !contin {
 			if NODES[iterateEdge.num].visited == 0 {
-				bfs(iterateEdge.num, j, depth, direction)
+				dfs(iterateEdge.num, j, depth, direction)
 			}
 			iterateEdge = iterateEdge.nextEdge
 		}
 	}
 }
 
-//func findLowest() (int, int) {
-//	i, j := 0, 0
-//	min := 2.0
-//	for _, e := range EDGES {
-//		e.point = getPoint(e.nodes[0], e.nodes[1])
-//		p := getPoint(e.nodes[0], e.nodes[1])
-//		if p < min {
-//			min = p
-//			i, j = e.nodes[0], e.nodes[1]
-//		}
-//	}
-//	return i, j
-//}
-
+//for read file
 func check(e error) {
 	if e != nil {
 		panic(e)
@@ -176,12 +165,21 @@ func removeFirstEdge() (int, int) {
 	return i, j
 }
 
+var counterSecond = 0
 //monitoring
 func showCounter() {
 	for end {
 		fmt.Println("-------------------------")
-		fmt.Println("Remove Edges : ", counter)
-		fmt.Println("Thread : ", counterThread)
+		counterSecond++
+		fmt.Println("Second", counterSecond)
+		fmt.Println("Removed Edges : ", counter)
+
+		var mem runtime.MemStats
+		runtime.ReadMemStats(&mem)
+		//fmt.Println(mem.Alloc)
+		fmt.Println("Memory Used", mem.TotalAlloc)
+		//fmt.Println(mem.HeapAlloc)
+		//fmt.Println(mem.HeapSys)
 		time.Sleep(1000 * time.Millisecond)
 	}
 }
@@ -347,9 +345,11 @@ func initNode() {
 }
 
 ////reCji
-func repoint() {
+func repoint(i, j int) {
 	for _, e := range EDGES {
-		e.point = getPoint(e.nodes[0], e.nodes[1])
+		if e.nodes[0] == i || e.nodes[1] == j {
+			e.point = getPoint(e.nodes[0], e.nodes[1])
+		}
 	}
 }
 
