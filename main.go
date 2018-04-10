@@ -11,6 +11,7 @@ import (
 	"time"
 	"DS2/MySort"
 	"runtime"
+	"strings"
 )
 
 type Node struct {
@@ -26,31 +27,72 @@ type EdgeLinkedList struct {
 	previousEdge *EdgeLinkedList
 	nextEdge     *EdgeLinkedList
 }
-
 type EdgeStruct struct {
-	point float64
+	point        float64
+	nodes        [2]int
+	foreignIndex int
+}
+type Edge struct {
+	index int
 	nodes [2]int
 }
 
+//linked list
 var NODES map[int]*Node
 var EDGES []*EdgeStruct
+//sparse
+var startNode map[int]float64
+var SparseMatrix []*Edge
+
 var contin bool //continue
 var end bool
 var counter = 0
 
-const file = "test4.txt"
+const file = "test1.txt"
 
 func main() {
-	contin = true
-	NODES = make(map[int]*Node)
-	initNode()
-	sortNodes()
-	pointEdges()
-	runAlgorithm("")
-	fmt.Println("end")
+	for {
+		command := getCommand()
+		if len(command) == 3 && command[0] == "run" && command[2] != "optimum" {
+			contin = true
+			NODES = make(map[int]*Node)
+			initNode()
+			sortNodes()
+			pointEdges()
+			runAlgorithm(command[2], 0)
+			fmt.Println("end")
+		} else if len(command) == 5 && command[0] == "run" && command[2] == "optimum" {
+			contin = true
+			NODES = make(map[int]*Node)
+			initNode()
+			sortNodes()
+			pointEdges()
+			N, _ := strconv.Atoi(command[4])
+			if command[3] == "insertion" {
+				runAlgorithm("quickInsertion", N)
+			} else {
+				runAlgorithm("quickBubble", N)
+			}
+			fmt.Println("end")
+		} else {
+			fmt.Println("invalid command")
+		}
+	} //end of while
+
 }
 
-func runAlgorithm(mode string) {
+func getCommand() []string {
+	fmt.Print("Enter your command: ")
+	reader := bufio.NewReader(os.Stdin)
+	text, _ := reader.ReadString('\n')
+	commands := strings.Split(text, "\n")
+	text = commands[0]
+	text = string(text)
+	commands = strings.Split(text, " ")
+	return commands
+}
+
+func runAlgorithm(mode string, N int) {
 	end = true
 	len1 := len(EDGES)
 	fmt.Println("Number of Edges : ", len1)
@@ -67,11 +109,13 @@ func runAlgorithm(mode string) {
 			MySort.BubbleSort(byPoint(EDGES), 0, len(EDGES)-1)
 		case "insertion":
 			MySort.InsertionSort(byPoint(EDGES), 0, len(EDGES)-1)
-		case "quicksort":
+		case "quickSort", "quick":
 			MySort.QuickSort(byPoint(EDGES), 0, len(EDGES)-1)
-		case "optimum":
-			MySort.Optimum(byPoint(EDGES), 0, len(EDGES)-1, 25, 0)
-		case "mergesort":
+		case "optimumInsertion":
+			MySort.Optimum(byPoint(EDGES), 0, len(EDGES)-1, N, 0)
+		case "optimumBubble":
+			MySort.Optimum(byPoint(EDGES), 0, len(EDGES)-1, N, 1)
+		case "mergeSort", "merge":
 			MergeSort(EDGES)
 		default:
 			MySort.Sort(byPoint(EDGES))
@@ -80,6 +124,7 @@ func runAlgorithm(mode string) {
 		dfs(i, j, 0, 1)
 	}
 	contin = false
+	end = false
 	setFalseToNodes()
 	fmt.Println("Removed Edges : ", len1-len(EDGES))
 	f, err := os.Create("result" + file)
@@ -87,8 +132,11 @@ func runAlgorithm(mode string) {
 	defer f.Close()
 	f.Sync()
 	w := bufio.NewWriter(f)
-	bfsPrint(i, "A", w)
-	bfsPrint(j, "B", w)
+	w.WriteString("runtime " + strconv.Itoa(counterSecond) + "\n")
+	dfsPrint(i, "A", w)
+	dfsPrint(j, "B", w)
+	w.WriteString("alloc " + strconv.Itoa(int(alloc)) + "\n")
+
 }
 
 //remove edge from nodes
@@ -123,18 +171,9 @@ func setFalseToNodes() {
 		N.visited = 0
 	}
 }
-
-//for Test
-//func showEdgsOfNode(i int) {
-//	iterateEdge := NODES[i].nextEdge
-//	fmt.Println(" EDGES  ")
-//	for iterateEdge != nil {
-//		fmt.Print(iterateEdge.num, " ")
-//		iterateEdge = iterateEdge.nextEdge
-//	}
-//	fmt.Println()
-//}
-
+func removeEdgeFromSparseMatrix(i int) {
+	SparseMatrix = append(SparseMatrix[:i], SparseMatrix[i+1:]...)
+}
 func removeEdgeFromNodes(nodeNum, edgeNum int) {
 	iterateEdge := NODES[nodeNum].nextEdge
 	var previousEdge *EdgeLinkedList
@@ -178,38 +217,30 @@ func showCounter() {
 
 		var mem runtime.MemStats
 		runtime.ReadMemStats(&mem)
-		//fmt.Println(mem.Alloc)
-		fmt.Println("Memory Used", mem.TotalAlloc)
+		alloc = mem.Alloc
+		fmt.Println("Memory Used", mem.Alloc)
+		//fmt.Println("Memory Used", mem.TotalAlloc)
 		//fmt.Println(mem.HeapAlloc)
 		//fmt.Println(mem.HeapSys)
 		time.Sleep(1000 * time.Millisecond)
 	}
 }
 
+var alloc uint64
+
 //execute end of runAlgorithm and show Result
-func bfsPrint(i int, str string, w *bufio.Writer) {
+func dfsPrint(i int, str string, w *bufio.Writer) {
 	n := NODES[i]
 	n.visited = 1
 	iterateEdge := n.nextEdge
-	w.WriteString("#" + str + " " + strconv.Itoa(i) + "\n")
+	w.WriteString(strconv.Itoa(i) + ": #" + str + "\n")
 	for iterateEdge != nil {
 		if NODES[iterateEdge.num].visited == 0 {
-			bfsPrint(iterateEdge.num, str, w)
+			dfsPrint(iterateEdge.num, str, w)
 		}
 		iterateEdge = iterateEdge.nextEdge
 	}
 }
-
-// check available channel
-//func IsClosed(ch <-chan int) bool {
-//	select {
-//	case <-ch:
-//		return true
-//	default:
-//	}
-//
-//	return false
-//}
 
 func endBfs() {
 	contin = true
@@ -232,6 +263,8 @@ func getEdgeNum(index int) int {
 }
 
 //set point(Cji) for all edges
+var counterEdges = 0
+
 func pointEdges() {
 	f, _ := os.Open(file)
 	r := csv.NewReader(bufio.NewReader(f))
@@ -245,7 +278,8 @@ func pointEdges() {
 		if e1 < e2 {
 			point := getPoint(e1, e2)
 			nodes := [2]int{e1, e2}
-			EDGES = append(EDGES, &EdgeStruct{point, nodes})
+			counterEdges++
+			EDGES = append(EDGES, &EdgeStruct{point, nodes, counterEdges})
 		}
 	}
 }
@@ -354,15 +388,6 @@ func repoint(i, j int) {
 		}
 	}
 }
-
-// Thread
-//func point(first, end int) {
-//	for first < end && contin {
-//		edge := EDGES[first]
-//		edge.point = getPoint(edge.nodes[0], edge.nodes[1])
-//		first++
-//	}
-//}
 
 // for edge sort
 type byNumber []*EdgeLinkedList
